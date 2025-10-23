@@ -1,0 +1,12 @@
+.barra {
+    display: flex;
+    flex-direction: column;
+
+    @include tablet {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+}
+
+.navegacion {}
