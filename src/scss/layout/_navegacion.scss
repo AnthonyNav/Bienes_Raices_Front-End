@@ -9,4 +9,25 @@
 
 }
 
-.navegacion {}
+.navegacion {
+    @include tablet {
+        display: flex;
+        align-items: center;
+    }
+
+    a {
+        color: $blanco;
+        text-decoration: none;
+        padding: 2.2rem;
+        display: block;
+        text-align: center;
+
+        @include tablet {
+            margin-right: 2rem;
+
+            &:last-of-type {
+                margin-right: 0;
+            }
+        }
+    }
+}

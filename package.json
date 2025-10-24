@@ -24,6 +24,7 @@
     "gulp-terser-js": "^5.2.2",
     "gulp-webp": "^4.0.1",
     "sass": "^1.49.9",
+    "sass-embedded": "^1.93.2",
     "terser": "^4.8.0"
   }
 }
