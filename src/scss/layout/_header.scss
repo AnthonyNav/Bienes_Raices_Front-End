@@ -1,7 +1,6 @@
 .no-webp .inicio {
     background-image: url(../img/header.jpg);
 }
-
 .webp .inicio {
     background-image: url(../img/header.webp);
 }
@@ -13,7 +12,6 @@
     &.inicio {
         background-position: center center;
         background-size: cover;
-        background-repeat: no-repeat;
 
         @include tablet {
             min-height: 70rem;
