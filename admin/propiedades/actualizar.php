@@ -1,13 +1,196 @@
 <?php 
+
+    $id = $_GET['id'];
+    $id = filter_var($id, FILTER_VALIDATE_INT);
+    if(!$id){
+        header('Location: /admin/index.php');
+    }
+
+    // Conexion a la base de datos
+    require '../../includes/config/database.php';
+    $db = conectaDB();
+
+    // Obtener los datos de la propiedad
+    $consultaPropiedad = "SELECT * FROM propiedades WHERE id_prop = $id";
+    $resultadoPropiedad = mysqli_query($db, $consultaPropiedad);
+    $propiedad = mysqli_fetch_assoc($resultadoPropiedad);
+
+
+    // Consulta para obtener los vendedores
+    $consulta = "SELECT * FROM vendedores";
+    $resultado = mysqli_query($db, $consulta);
+
+    // Arreglo con mensajes de errores
+    $errores = [];
+
+    $titulo = $propiedad['titulo'];
+    $precio = $propiedad['precio'];
+    $descripcion = $propiedad['descripcion'];
+    $habitaciones = $propiedad['habitaciones'];
+    $wc = $propiedad['wc'];
+    $estacionamiento = $propiedad['estacionamiento'];
+    $vendedorID = $propiedad['id_ven'];
+    $imagen = $propiedad['imagen'];
+
+    if($_SERVER['REQUEST_METHOD'] === 'POST'){
+
+
+        $titulo = mysqli_real_escape_string($db, $_POST['titulo']);
+        $precio = mysqli_real_escape_string($db, $_POST['precio']);
+        $descripcion = mysqli_real_escape_string($db, $_POST['descripcion']);
+        $habitaciones = mysqli_real_escape_string($db, $_POST['habitaciones']);
+        $wc = mysqli_real_escape_string($db, $_POST['wc']);
+        $estacionamiento = mysqli_real_escape_string($db, $_POST['estacionamiento']);
+        $vendedorID = mysqli_real_escape_string($db, $_POST['vendedor']);
+
+        // Asignar files hacia una variable
+        $imagen = $_FILES['imagen'];
+
+        // Validar que los campos no esten vacios
+        if(!$titulo){
+            $errores[] = "Debes añadir un titulo";
+        }
+
+        if(!$precio){
+            $errores[] = "Debes añadir un precio";
+        }
+
+        if(!$descripcion){
+            $errores[] = "Debes añadir una descripcion";
+        }
+
+        if (strlen($descripcion) < 50 ){
+            $errores[] = "La descripcion debe tener al menos 50 caracteres";
+        }
+
+        if(!$habitaciones){
+            $errores[] = "Debes añadir el numero de habitaciones";
+        }
+
+        if(!$wc){
+            $errores[] = "Debes añadir el numero de baños";
+        }
+
+        if(!$estacionamiento){
+            $errores[] = "Debes añadir el numero de lugares de estacionamiento";
+        }
+
+        if(!$vendedorID){
+            $errores[] = "Debes seleccionar un vendedor";
+        }
+
+
+        // Validar por tamaño (3mb máximo)
+        $medida = 1000 * 3000;
+        if($imagen['size'] > $medida){
+            $errores[] = "La imagen es muy pesada";
+        }
+        
+        if(empty($errores)){
+
+            // Subida de archivos
+            $nombreImagen = '';
+            $carpetaImagenes = '../../imagenes/';
+            // Crear la carpeta si no existe
+            if(!is_dir($carpetaImagenes)){
+                mkdir($carpetaImagenes);
+            }
+            // Generar un nombre unico
+            if($imagen['name']){
+                $nombreImagen = md5( uniqid( rand(), true ) ) . ".jpg";
+                // subir la imagen
+                move_uploaded_file($imagen['tmp_name'], $carpetaImagenes . $nombreImagen);
+                unlink($carpetaImagenes . $propiedad['imagen']);
+            } else {
+                $nombreImagen = $propiedad['imagen'];
+            }
+            
+
+            // Actualizar en la base de datos
+            $query = "UPDATE propiedades SET titulo = '$titulo', precio = '$precio', imagen = '$nombreImagen', descripcion = '$descripcion', habitaciones = $habitaciones, wc = $wc, estacionamiento = $estacionamiento, id_ven = $vendedorID WHERE id_prop = $id;";
+
+            // echo $query;
+
+            $resultado = mysqli_query($db, $query);
+
+            if($resultado){
+                echo "Insertado Correctamente";
+                header('Location: /admin/index.php?resultado=2');
+            }
+        }
+    }
+
+
+
     require '../../includes/funciones.php';
     incluirTemplate('header');
  ?>
     <main class="contenedor seccion">
-        <h1>Actualizar</h1>
+        <h1>Actualizar Propiedad</h1>
         <a href="../index.php" class="boton boton-verde">Volver</a>
+        
+        <?php foreach($errores as $error): ?>
+            <div class="alerta error">
+                <?php echo $error; ?>
+            </div>
+        <?php endforeach; ?>
+
+
+        <form action="" class="formulario" method="POST" action="/admin/propiedades/actualizar.php" enctype="multipart/form-data">
+            <fieldset>
+                <legend>Información General</legend>
+
+                <label for="titulo">Titulo:</label>
+                <input type="text" id="titulo" name = "titulo" placeholder="Titulo Propiedad" value="<?php echo $titulo; ?>">
+
+                <label for="precio">Precio:</label>
+                <input type="number" id="precio" name="precio" placeholder="Precio Propiedad" value="<?php echo $precio; ?>">
+
+                <label for="imagen">Imagen:</label>
+                <input type="file" id="imagen" name="imagen" accept="image/jpeg, image/png" >
+
+                <img src="/imagenes/<?php echo $propiedad['imagen'];?>" class="imagen-small" alt="">
+
+                <label for="descripcion">Descripción:</label>
+                <textarea name="descripcion" id="descripcion"><?php echo $descripcion; ?></textarea>
+            </fieldset>
+ 
+            <fieldset>
+                <legend>Información Propiedad</legend>
+
+                <label for="precio">habitaciones:</label>
+                <input 
+                type="number" id="habitaciones" name="habitaciones"  placeholder="Ej: 3" min="1" max="9" value="<?php echo $habitaciones; ?>">
+    
+                <label for="precio">Baños:</label>
+                <input type="number" id="wc" name="wc" placeholder="Ej: 3" min="1" max="9" value="<?php echo $wc; ?>">
+
+                <label for="precio">Estacionamiento:</label>
+                <input type="number" id="estacionamiento" name="estacionamiento" placeholder="Ej: 3" min="1" max="9" value="<?php echo $estacionamiento; ?>">
+
+            </fieldset>
+
+            <fieldset>
+                <legend>Vendedor</legend>
+
+                <select id = "vendedor" name = "vendedor">
+                    <option value="">Seleccionar</option>
+                    <?php while($vendedor = mysqli_fetch_assoc($resultado)): ?>
+                        <option <?php echo $vendedor['id_ven'] === $vendedorID ? 'selected' : ''; ?> value="<?php echo $vendedor['id_ven']; ?>">
+                            <?php echo $vendedor['nombre'] . " " . $vendedor['apellido']; ?>
+                        </option>
+                    <?php endwhile; ?>
+                </select>
+            </fieldset>
+
+            <input type="submit" value="Actualizar Propiedad" class="boton boton-verde">
+        </form>
+
+
     </main>
 
-   
+    
+
 <?php 
     incluirTemplate('footer');
  ?>
