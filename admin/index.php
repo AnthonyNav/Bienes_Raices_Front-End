@@ -1,5 +1,9 @@
 <?php 
-
+    // Importar el template
+    require '../includes/funciones.php';
+    if(!estaAutenticado()){
+        header('Location: /');
+    }
     // echo "<pre>";
     // var_dump(($_POST));
     // echo "</pre>";
@@ -39,8 +43,7 @@
         }
     }
 
-    // Importar el template
-    require '../includes/funciones.php';
+    
     incluirTemplate('header');
 
 

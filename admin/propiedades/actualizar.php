@@ -1,4 +1,10 @@
 <?php 
+    // Importar el template
+    require '../../includes/funciones.php';
+
+    if(!estaAutenticado()){
+        header('Location: /');
+    }
 
     $id = $_GET['id'];
     $id = filter_var($id, FILTER_VALIDATE_INT);
@@ -119,10 +125,7 @@
             }
         }
     }
-
-
-
-    require '../../includes/funciones.php';
+    // require '../../includes/funciones.php';
     incluirTemplate('header');
  ?>
     <main class="contenedor seccion">

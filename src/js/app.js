@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function darkMode() {
-    const prefiereDarkMode = window.matchMedia('(prefers-color-scheme: dark)');
+    const prefiereDarkMode = window.matchMedia('(prefers-color-scheme: white)');
     console.log(prefiereDarkMode)
     // console.log(prefiereDarkMode.matches);
     if(prefiereDarkMode.matches) {

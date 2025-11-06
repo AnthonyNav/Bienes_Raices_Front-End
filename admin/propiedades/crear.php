@@ -1,4 +1,12 @@
 <?php 
+    // Importar el template
+    require '../../includes/funciones.php';
+
+    session_start();
+    if(!estaAutenticado()){
+        header('Location: /');
+    }
+
     // Conexion a la base de datos
     require '../../includes/config/database.php';
     $db = conectaDB();

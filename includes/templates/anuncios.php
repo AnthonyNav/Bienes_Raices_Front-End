@@ -3,7 +3,7 @@
     require __DIR__ . '/../config/database.php';
     $db = conectaDB();
     // Realizar consulta
-    $query = "SELECT * FROM propiedades LIMIT ${limite}";
+    $query = "SELECT * FROM propiedades LIMIT $limite";
     $resultado = mysqli_query($db, $query);
 
 ?>
