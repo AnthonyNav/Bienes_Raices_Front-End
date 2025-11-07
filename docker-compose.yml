@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   app:
     build:
@@ -10,6 +8,7 @@ services:
       - "8080:80"
     volumes:
       - ./:/var/www/html
+      - ./imagenes:/var/www/html/imagenes
     environment:
       - DB_HOST=mysql
       - DB_PORT=3306
@@ -34,6 +33,18 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: bienes_raices_pma
+    environment:
+      - PMA_HOST=mysql
+      - PMA_USER=bienes_user
+      - PMA_PASSWORD=bienes_pass
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql
     restart: unless-stopped
 
 volumes:

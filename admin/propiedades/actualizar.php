@@ -120,7 +120,7 @@
             $resultado = mysqli_query($db, $query);
 
             if($resultado){
-                echo "Insertado Correctamente";
+                //echo "Insertado Correctamente";
                 header('Location: /admin/index.php?resultado=2');
             }
         }

@@ -2,7 +2,6 @@
     // Importar el template
     require '../../includes/funciones.php';
 
-    session_start();
     if(!estaAutenticado()){
         header('Location: /');
     }
@@ -103,12 +102,12 @@
             $query = "INSERT INTO propiedades (titulo, precio, imagen, descripcion, habitaciones, wc, estacionamiento, creado, id_ven)
             VALUES ('$titulo', '$precio', '$nombreImagen', '$descripcion', '$habitaciones', '$wc', '$estacionamiento', NOW(), '$vendedorID')";
 
-            echo $query;
+            //echo $query;
 
             $resultado = mysqli_query($db, $query);
 
             if($resultado){
-                echo "Insertado Correctamente";
+                //echo "Insertado Correctamente";
                 header('Location: /admin/index.php?resultado=1');
             }
         }
@@ -116,7 +115,7 @@
 
 
 
-    require '../../includes/funciones.php';
+    // require '../../includes/funciones.php';
     incluirTemplate('header');
  ?>
     <main class="contenedor seccion">
