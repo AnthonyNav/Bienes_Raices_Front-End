@@ -1,4 +1,39 @@
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: bienes_raices_db
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=bienes_raices
+      - MYSQL_USER=bienes_user
+      - MYSQL_PASSWORD=bienes_pass
+    ports:
+      - "3306:3306"   # opcional en desarrollo; puedes quitarlo si solo lo usas desde app/phpmyadmin
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -prootpassword || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: bienes_raices_pma
+    environment:
+      - PMA_HOST=mysql
+      - PMA_USER=bienes_user
+      - PMA_PASSWORD=bienes_pass
+    ports:
+      - "8081:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
   app:
     build:
       context: .
@@ -16,35 +51,8 @@ services:
       - DB_USERNAME=bienes_user
       - DB_PASSWORD=bienes_pass
     depends_on:
-      - mysql
-    restart: unless-stopped
-
-  mysql:
-    image: mysql:8.0
-    container_name: bienes_raices_db
-    command: --default-authentication-plugin=mysql_native_password
-    environment:
-      - MYSQL_ROOT_PASSWORD=rootpassword
-      - MYSQL_DATABASE=bienes_raices
-      - MYSQL_USER=bienes_user
-      - MYSQL_PASSWORD=bienes_pass
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    restart: unless-stopped
-  phpmyadmin:
-    image: phpmyadmin:5
-    container_name: bienes_raices_pma
-    environment:
-      - PMA_HOST=mysql
-      - PMA_USER=bienes_user
-      - PMA_PASSWORD=bienes_pass
-    ports:
-      - "8081:80"
-    depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

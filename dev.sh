@@ -10,6 +10,9 @@ IMAGES_DIR="${IMAGES_DIR:-./imagenes}"
 CONTAINER_IMAGES_PATH="/var/www/html/imagenes"
 WWW_UID="${WWW_UID:-33}"                   # www-data uid típico (Debian/Apache)
 WWW_GID="${WWW_GID:-33}"
+LOG_DIR="${LOG_DIR:-./logs}"
+DEV_LOG="${DEV_LOG:-$LOG_DIR/dev.log}"
+DEV_PID="${DEV_PID:-$LOG_DIR/dev.pid}"
 
 # Detecta si necesitamos sudo para docker
 DOCKER="docker"
@@ -35,12 +38,16 @@ compose() {
   $DOCKER compose -f "$COMPOSE_FILE" "$@"
 }
 
+is_running_pid() {
+  local pid="$1"
+  [[ -n "$pid" ]] && kill -0 "$pid" >/dev/null 2>&1
+}
+
 # =========================
 # Comprobaciones
 # =========================
 check() {
   need docker
-  # compose plugin integrado
   if ! docker compose version >/dev/null 2>&1; then
     err "Tu instalación de Docker no tiene el plugin 'compose'. Instálalo."
     exit 1
@@ -52,13 +59,12 @@ check() {
   if grep -qE '^\s*version\s*:' "$COMPOSE_FILE"; then
     warn "Tu docker-compose.yml tiene 'version:' (obsoleta). Puedes quitar esa línea para evitar el warning."
   fi
-  log "Dependencias OK."
+  log "Dependencias Docker OK."
 }
 
 # Crea ./imagenes y ajusta permisos en host
 prepare_images_dir() {
   mkdir -p "$IMAGES_DIR"
-  # Intentamos cambiar dueño a 33:33 (www-data). Si falla sin sudo, reintentamos con sudo si existe.
   if chown -R "$WWW_UID:$WWW_GID" "$IMAGES_DIR" 2>/dev/null; then
     :
   else
@@ -88,17 +94,96 @@ test_writable() {
 }
 
 # =========================
+# Node: deps y watcher
+# =========================
+ensure_node_setup() {
+  # Solo si existe package.json
+  if [[ -f "package.json" ]]; then
+    # Si NO hay package-lock.json => npm install
+    if [[ ! -f "package-lock.json" ]]; then
+      if command -v npm >/dev/null 2>&1; then
+        log "No se encontró package-lock.json. Ejecutando 'npm install'..."
+        npm install
+      else
+        warn "No se encontró 'npm' en el sistema; no puedo correr 'npm install'."
+      fi
+    fi
+  else
+    warn "No hay package.json en la raíz; omito instalación de frontend."
+  fi
+}
+
+detect_dev_command() {
+  # Elige comando de watcher: 'npm run dev' si existe; si no, intenta 'npx gulp'
+  local cmd=""
+  if [[ -f package.json ]] && command -v npm >/dev/null 2>&1; then
+    if grep -q '"dev"' package.json; then
+      cmd="npm run dev"
+    fi
+  fi
+  if [[ -z "$cmd" ]]; then
+    if command -v npx >/dev/null 2>&1; then
+      cmd="npx gulp"
+    elif command -v gulp >/dev/null 2>&1; then
+      cmd="gulp"
+    fi
+  fi
+  echo "$cmd"
+}
+
+start_dev_watcher_bg() {
+  mkdir -p "$LOG_DIR"
+
+  # Evita duplicados si ya hay un watcher corriendo
+  if [[ -f "$DEV_PID" ]]; then
+    local oldpid
+    oldpid="$(cat "$DEV_PID" 2>/dev/null || true)"
+    if is_running_pid "$oldpid"; then
+      warn "Watcher ya en ejecución (PID $oldpid). Omitiendo lanzar otro."
+      return 0
+    fi
+  fi
+
+  local cmd
+  cmd="$(detect_dev_command)"
+
+  if [[ -z "$cmd" ]]; then
+    warn "No encontré un comando de watcher ('npm run dev' o 'gulp')."
+    return 0
+  fi
+
+  # Si vamos a correr npm/gulp, verifica herramientas mínimas
+  if [[ "$cmd" == npm* ]] && ! command -v npm >/dev/null 2>&1; then
+    warn "No hay 'npm' en PATH; no puedo ejecutar '$cmd'."
+    return 0
+  fi
+  if [[ "$cmd" == *gulp* ]] && ! command -v npx >/dev/null 2>&1 && ! command -v gulp >/dev/null 2>&1; then
+    warn "No hay 'npx' ni 'gulp' en PATH; no puedo ejecutar '$cmd'."
+    return 0
+  fi
+
+  log "Lanzando watcher en segundo plano: $cmd"
+  # Ejecuta en background y captura PID
+  nohup bash -lc "$cmd" >>"$DEV_LOG" 2>&1 &
+  echo $! > "$DEV_PID"
+  log "Watcher iniciado (PID $(cat "$DEV_PID")). Logs: $DEV_LOG"
+}
+
+# =========================
 # Comandos
 # =========================
 cmd_up() {
   check
   prepare_images_dir
   compose up --build -d
-  # segundo intento de permisos ya con contenedor arriba
   fix_perms_in_container || true
   log "Servicios arriba. App: http://localhost:8080  phpMyAdmin: http://localhost:8081"
   log "Prueba de escritura en $CONTAINER_IMAGES_PATH:"
   test_writable || true
+
+  # --- FRONTEND: instala deps si falta package-lock y arranca watcher en bg ---
+  ensure_node_setup
+  start_dev_watcher_bg
 }
 
 cmd_down() {
@@ -139,7 +224,7 @@ usage() {
 Uso: $(basename "$0") <comando>
 
 Comandos:
-  up         Construye y levanta el stack; prepara permisos de ./imagenes
+  up         Construye y levanta el stack; prepara permisos; instala deps (si falta package-lock) y lanza watcher (npm run dev o gulp) en bg
   down       Detiene y elimina contenedores
   logs       Muestra logs del servicio PHP (app)
   status     Muestra estado de los servicios
@@ -151,6 +236,7 @@ Variables opcionales:
   APP_SERVICE   (default: app)
   COMPOSE_FILE  (default: docker-compose.yml)
   IMAGES_DIR    (default: ./imagenes)
+  LOG_DIR       (default: ./logs)
   WWW_UID       (default: 33)
   WWW_GID       (default: 33)
 
